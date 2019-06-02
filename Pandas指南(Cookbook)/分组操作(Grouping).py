@@ -3,13 +3,26 @@ import functools
 import numpy as np
 import pandas as pd
 
+'''
+1、agg 方法将一个函数使用在一个数列上，然后返回一个标量的值。
+也就是说agg每次传入的是一列数据，对其聚合后返回标量。
+2、apply 是一个更一般化的方法：将一个数据分拆-应用-汇总。
+apply会将当前分组后的数据一起传入，可以返回多维数据。
+'''
 df = pd.DataFrame({'animal': 'cat dog cat fish dog cat cat'.split(),
                    'size': list('SSMMMLL'),
                    'weight': [8, 10, 11, 1, 20, 12, 12],
                    'adult': [False] * 5 + [True] * 2})
 print(df)
+
+# 这里的第一组数据会输出2次
+# 官方API：In the current implementation apply
+# calls func twice on the first column/row to
+# decide whether it can take a fast or slow code path.
+df.groupby('animal').apply(lambda x: print(x))
+
 # 列出每种animal中有最高weight的size
-# idxmax() 返回当前对象第一个出现最小值的索引
+# idxmax() 返回当前对象第一个出现最大值的索引
 print(df.groupby('animal').apply(lambda x: x['size'][x['weight'].idxmax()]))
 
 # 使用get_group
@@ -49,6 +62,7 @@ print(S.expanding().apply(Red, raw=True))
 
 # Replacing some values with mean of the rest of a group
 df = pd.DataFrame({'A': [1, 1, 2, 2], 'B': [1, -1, 1, 2]})
+print(df)
 gb = df.groupby('A')
 
 
@@ -58,6 +72,8 @@ def replace(g):
     return g
 
 
+# transform中传入的函数只能返回两种结果，
+# 可以广播的标量值或者与分组大小相同的结果数组。
 print(gb.transform(replace))
 
 # Sort groups by aggregated data
@@ -99,6 +115,7 @@ df = pd.DataFrame(
     index=[u'Last Gunfighter', u'Last Gunfighter', u'Last Gunfighter',
            u'Paynter', u'Paynter', u'Paynter'])
 print(df)
+# 每一组的beyer列的值shift一位
 df['beyer_shifted'] = df.groupby(level=0)['beyer'].shift(1)
 print(df)
 
@@ -119,6 +136,9 @@ print(df.A.groupby((df.A != df.A.shift()).cumsum()).cumsum())
 # Splitting
 df = pd.DataFrame(data={'Case': ['A', 'A', 'A', 'B', 'A', 'A', 'B', 'A', 'A'],
                         'Data': np.random.randn(9)})
+# rolling函数 移动窗口默认是从右往左，每次滑行一个单位
+# window参数表示窗口大小
+# min_periods表示每个窗口最少包含的观测值数量，小于这个值的窗口结果为NA。
 dfs = list(zip(*df.groupby((1 * (df['Case'] == 'B')).cumsum().rolling(window=3, min_periods=1).median())))[-1]
 print(dfs[0])
 print(dfs[1])
@@ -128,7 +148,11 @@ print(dfs[2])
 df = pd.DataFrame(data={'Province': ['ON', 'QC', 'BC', 'AL', 'AL', 'MN', 'ON'],
                         'City': ['Toronto', 'Montreal', 'Vancouver', 'Calgary', 'Edmonton', 'Winnipeg', 'Windsor'],
                         'Sales': [13, 6, 16, 8, 4, 3, 1]})
+print(df)
+# margins参数用于增加名为All的行和列，用于对行列数据求和
 table = pd.pivot_table(df, values=['Sales'], index=['Province'], columns=['City'], aggfunc=np.sum, margins=True)
+print(table)
+# stack函数用于将列旋转为行
 print(table.stack('City'))
 
 # Frequency table like plyr in R
@@ -142,6 +166,7 @@ df = pd.DataFrame({'ID': ["x%d" % r for r in range(10)],
                    'Passed': ['yes' if x > 50 else 'no' for x in grades],
                    'Employed': [True, True, True, False, False, False, False, True, True, False],
                    'Grade': grades})
+print(df)
 print(df.groupby('ExamYear').agg({'Participated': lambda x: x.value_counts()['yes'],
                                   'Passed': lambda x: sum(x == 'yes'),
                                   'Employed': lambda x: sum(x),
@@ -156,6 +181,7 @@ print(pd.pivot_table(df, index=df.index.month, columns=df.index.year,
 # Apply
 df = pd.DataFrame(data={'A': [[2, 4, 8, 16], [100, 200], [10, 20, 30]], 'B': [['a', 'b', 'c'], ['jj', 'kk'], ['ccc']]},
                   index=['I', 'II', 'III'])
+print(df)
 
 
 def SeriesFromSubList(aList):
@@ -163,6 +189,8 @@ def SeriesFromSubList(aList):
 
 
 df_orgz = pd.concat(dict([(ind, row.apply(SeriesFromSubList)) for ind, row in df.iterrows()]))
+print(df_orgz)
+
 df = pd.DataFrame(data=np.random.randn(2000, 2) / 10000,
                   index=pd.date_range('2001-01-01', periods=2000),
                   columns=['A', 'B'])
